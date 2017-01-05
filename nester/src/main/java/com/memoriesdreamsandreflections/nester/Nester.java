@@ -43,7 +43,7 @@ public class Nester<R>
 	static Logger log = LoggerFactory.getLogger( Nester.class );
 	List<CategoryDescriptor<R>> categoryDescriptors;
 	Object[] categoryValues;
-	List<ContainerLevel<R>> fields = null; // for reflection
+	List<ContainerLevel> fields = null; // for reflection
 	String detailFieldName;
 	Field detailField;
 	Class<R> rowClazz;
@@ -120,7 +120,7 @@ public class Nester<R>
 		return this;
 	}
 
-	public List nest( List<R> rows )
+	public Map nest( List<R> rows )
 	throws Exception
 	{
 		nanos = System.nanoTime();
@@ -129,7 +129,8 @@ public class Nester<R>
 			accessor = new DefaultAccessor( fields, detailField );
 		}
 
-		List masterNode = new MapLevel().newContainer();
+		Map masterNode = new LinkedHashMap<Object, Object>();
+		
 		if ( ordered )
 		{
 			rows.stream().forEach( row -> {
@@ -430,13 +431,13 @@ public class Nester<R>
 	}
 
 	@SuppressWarnings( { "unchecked" } )
-	protected void processUnorderedRow( R row, List masterNode )
+	protected void processUnorderedRow( R row, Map masterNode )
 	throws Exception
 	{
 		ListLevel listHelper = new ListLevel(null); 
 		MapLevel mapHelper = new MapLevel(null); 
-		List< ? > parentNode = masterNode;
-		Map parent = map(masterNode);
+		Map<Object, Object> parentNode = masterNode;
+		Map<Object, Object> parent = masterNode;
 		Object categoryValue = null;
 		long clock = 0l;
 
@@ -445,30 +446,30 @@ public class Nester<R>
 		for ( int i = 0; i < fields.size(); i++ )
 		{
 			clock = System.nanoTime();
-			parent = map(parentNode);
+			parent = parentNode;
 			categoryValue = categoryValues[ i ];
-			List node = parent == null ? null : (List) parent.get( categoryValue );
-			if ( node == null )
+			Object objectForCurrentCatValue = parent == null ? null : parent.get( categoryValue );
+			if ( objectForCurrentCatValue == null )
 			{
 				try
 				{
 					if ( i == inmostLevel )
 					{
-						node = listHelper.newContainer();
+						List l = listHelper.newContainer();
 						if (parent != null)
 						{
-							parent.put( categoryValue, node );
+							parent.put( categoryValue, l );
 						}
-						listHelper.addDetail( node, row );
+						listHelper.addDetail( l, row );
 					}
 					else
 					{
-						node = mapHelper.newContainer();
+						Map m = mapHelper.newContainer();
 						if (parent != null)
 						{
-							parent.put( categoryValue, node );
+							parent.put( categoryValue, m );
 						}
-						parentNode = node;
+						parentNode = m;
 					}
 				}
 				catch ( Exception e )
@@ -485,22 +486,24 @@ public class Nester<R>
 			{
 				if ( i == inmostLevel )
 				{
-					listHelper.addDetail( node, row );
+					List l = (List)objectForCurrentCatValue;
+					listHelper.addDetail( l, row );
 				}
 				else
 				{
-					parentNode = node;
+					parentNode = (Map)objectForCurrentCatValue;
 				}
 			}
 		}
 
 	}
 
+
 	@SuppressWarnings( { "unchecked" } )
-	protected void processOrderedRow( R row, List masterNode )
+	protected void processOrderedRow( R row, Map<?,?> masterNode )
 	throws Exception
 	{
-		List parentNode = masterNode; 
+		Map<?,?> parentNode = masterNode; 
 		Map parent = null;
 		Object categoryValue = null;
 		long clock = 0l;
@@ -510,7 +513,7 @@ public class Nester<R>
 		for ( int categoryIdx = 0; categoryIdx < fields.size(); categoryIdx++ )
 		{
 			clock = System.nanoTime();
-			parent = map(parentNode);
+			parent = parentNode;
 			categoryValue = categoryValues[ categoryIdx ];
 			ContainerLevel cl = fields.get( categoryIdx );
 			try
@@ -575,7 +578,7 @@ public class Nester<R>
 		detailField = rowClazz.getDeclaredField( detailFieldName );
 	}
 
-	private ContainerLevel<R> field( CategoryDescriptor<R> descriptor )
+	private ContainerLevel field( CategoryDescriptor<R> descriptor )
 	{
 		try
 		{
@@ -599,37 +602,28 @@ public class Nester<R>
 	}
 
 	class MapLevel
-	extends ContainerLevel<R>
+	extends ContainerLevel<R, Map>
 	{
-		public MapLevel() throws NoSuchFieldException, SecurityException
-		{
-			super(null);
-		}
 		
 		public MapLevel( CategoryDescriptor<R> descriptor ) throws NoSuchFieldException, SecurityException
 		{
 			super( descriptor );
 		}
 
-		@SuppressWarnings( { "unchecked" } )
 		@Override
-		public List<Serializable> newContainer()
+		public Map< ? , ? > newContainer()
 		{
-			container = super.newContainer();
-			
-			container.add( new LinkedHashMap<Object, Object>() );
-			
-			return container;
+			return (container = new LinkedHashMap<Object, Object>() );
 		}
 		
 		public Map< ? , ? > getMap()
 		{
-			return (Map< ? , ? >)container.get( container.size() - 1 );
+			return container;
 		}
 	}
 
 	class ListLevel
-	extends ContainerLevel<R>
+	extends ContainerLevel<R, List>
 	{
 		public ListLevel( CategoryDescriptor<R> descriptor ) throws NoSuchFieldException, SecurityException
 		{
@@ -640,8 +634,7 @@ public class Nester<R>
 		@Override
 		public List<Serializable> newContainer()
 		{
-			container = new ArrayList();
-			return container;
+			return (container = new ArrayList());
 		}
 		
 		public List getList()
@@ -666,7 +659,7 @@ public class Nester<R>
 		Field detailField;
 		Function<R, Object> detailAccessor;
 
-		public DefaultAccessor( List<ContainerLevel<R>> fields, Field detailField )
+		public DefaultAccessor( List<ContainerLevel> fields, Field detailField )
 		{
 			rowFields = new Field[ fields.size() ];
 			for ( int i = 0; i < rowFields.length; i++ )
@@ -674,27 +667,31 @@ public class Nester<R>
 				rowFields[ i ] = fields.get( i ).getCategoryField();
 			}
 			this.detailField = detailField;
-			detailAccessor = ( detailField == null ) ? new Function<R, Object>()
-			{
-				public Object apply( R row )
+			detailAccessor = ( detailField == null ) ?
+				new Function<R, Object>()
 				{
-					return row;
-				}
-			} : new Function<R, Object>()
-			{
-				public Object apply( R row )
+					public R apply( R row )
+					{
+						return row;
+					}
+				} 
+				: 
+				new Function<R, Object>()
 				{
-					try
+					public Object apply( R row )
 					{
-						return detailField.get( row );
-					}
-					catch ( Exception e )
-					{
-						log.error( "Field access error", e );
-						return null;
+						try
+						{
+							return (Object)detailField.get( row );
+						}
+						catch ( Exception e )
+						{
+							log.error( "Field access error", e );
+							return null;
+						}
 					}
 				}
-			};
+			;
 
 		}
 
