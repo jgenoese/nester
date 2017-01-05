@@ -17,15 +17,7 @@ package com.memoriesdreamsandreflections.nester;
 
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Simple greeter class.
@@ -34,13 +26,13 @@ import org.slf4j.LoggerFactory;
  */
 @SuppressWarnings( { "rawtypes" } )
 
-public abstract class ContainerLevel<T>
+public abstract class ContainerLevel<T, C>
 {
 	CategoryDescriptor<T> descriptor;
 	Object lastValue;
-	List container;
+	C container;
 	boolean valueBreak;
-	boolean reset;
+	boolean reset = true;
 
 	public ContainerLevel( CategoryDescriptor<T> descriptor ) throws NoSuchFieldException, SecurityException
 	{
@@ -67,17 +59,12 @@ public abstract class ContainerLevel<T>
 		return valueBreak;
 	}
 
-	public void setValueBreak( boolean valueBreak )
-	{
-		this.valueBreak = valueBreak;
-	}
-
-	public List getContainer()
+	public C getContainer()
 	{
 		return container;
 	}
 
-	public void setContainer( List container )
+	public void setContainer( C container )
 	{
 		this.container = container;
 	}
@@ -114,10 +101,7 @@ public abstract class ContainerLevel<T>
 		reset = false;
 	}
 
-	public List newContainer()
-	{
-		return (container = new ArrayList(2));
-	}
+	public abstract C newContainer();
 
 	public void reset()
 	{

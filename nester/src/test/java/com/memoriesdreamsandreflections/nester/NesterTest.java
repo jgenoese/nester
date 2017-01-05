@@ -19,6 +19,7 @@ package com.memoriesdreamsandreflections.nester;
 import java.io.BufferedWriter ;
 import java.io.File ;
 import java.io.FileWriter ;
+import java.io.IOException ;
 import java.util.ArrayList ;
 import java.util.List;
 import java.util.Map;
@@ -27,12 +28,17 @@ import java.util.stream.Stream;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore ;
 import org.junit.Test;
 import org.slf4j.Logger ;
 import org.slf4j.LoggerFactory ;
 
+import com.fasterxml.jackson.core.JsonGenerator ;
+import com.fasterxml.jackson.databind.JsonSerializer ;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider ;
+import com.fasterxml.jackson.databind.jsontype.TypeSerializer ;
+import com.fasterxml.jackson.databind.module.SimpleModule ;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer ;
 
 @SuppressWarnings( "rawtypes" )
 public class NesterTest
@@ -151,7 +157,7 @@ public class NesterTest
 		.categoryDescriptors( categoryDescriptors )
 		.accessor( accessorWithDetail )
 		.detailFieldName( "detail" ); 
-		List result = nester.nest( testListNoNulls );
+		Map result = nester.nest( testListNoNulls );
 		log.info( "nesterTest Nester=[unordered,detailFieldName], execution_time={}, levelClocks={}", nester.getNanos(), nester.getLevelClocks() );
 		
 		commonAssertions(result, TestStruct.Detail.class, new File(tmpDir, "subrow.json") );
@@ -219,7 +225,6 @@ public class NesterTest
 	public void exploreNesterWithoutRollups()
 	throws Exception
 	{
-		TestStructAccessor accessor = new TestStructAccessor();
 		TestStructAccessor accessorWithDetail = new TestStructAccessorWithDetail();
 		File tmpDir = new File(System.getProperty( "java.io.tmpdir" ));
 		File jsonDump = new File(tmpDir, "exploreNester.json");
@@ -229,25 +234,9 @@ public class NesterTest
 		.categoryDescriptors( categoryDescriptors )
 		.accessor( accessorWithDetail )
 		.detailFieldName( "detail" ); 
-		List result = nester.nest( testListNoNulls );
+		Map result = nester.nest( testListNoNulls );
 
-		ObjectMapper ser = new ObjectMapper();
-		String json = ser.writeValueAsString( map(result) );
-		Assert.assertNotNull( json );
-		
-		if (jsonDump != null)
-		{
-			try(BufferedWriter wrt = new BufferedWriter( new FileWriter(jsonDump)))
-			{
-				wrt.append( json );
-				wrt.flush();
-			}
-			catch(Exception e)
-			{
-				log.error( "failed to write JSON", e );
-			}
-		}
-		
+		dumpToJsonFile(result, jsonDump);
 	}
 
 	
@@ -255,7 +244,6 @@ public class NesterTest
 	public void exploreNesterWithoutDetails()
 	throws Exception
 	{
-		TestStructAccessor accessor = new TestStructAccessor();
 		TestStructAccessor accessorWithDetail = new TestStructAccessorWithDetail();
 		File tmpDir = new File(System.getProperty( "java.io.tmpdir" ));
 		File jsonDump = new File(tmpDir, "exploreNester.json");
@@ -266,25 +254,9 @@ public class NesterTest
 		.accessor( accessorWithDetail )
 		.collectDetails( false )
 		.detailFieldName( "detail" ); 
-		List result = nester.nest( testListNoNulls );
+		Map result = nester.nest( testListNoNulls );
 
-		ObjectMapper ser = new ObjectMapper();
-		String json = ser.writeValueAsString( map(result) );
-		Assert.assertNotNull( json );
-		
-		if (jsonDump != null)
-		{
-			try(BufferedWriter wrt = new BufferedWriter( new FileWriter(jsonDump)))
-			{
-				wrt.append( json );
-				wrt.flush();
-			}
-			catch(Exception e)
-			{
-				log.error( "failed to write JSON", e );
-			}
-		}
-		
+		dumpToJsonFile(result, jsonDump);
 	}
 	
     @Test
@@ -299,15 +271,15 @@ public class NesterTest
         .categoryDescriptors( categoryDescriptors.subList(0,1) )
         .accessor( accessorShort );
 
-        List result = nester.nest( testListNoNulls );
+        Map result = nester.nest( testListNoNulls );
         log.info( "nesterTest Nester=[unordered,detailFieldName], execution_time={}, levelClocks={}", nester.getNanos(), nester.getLevelClocks() );
 		 
         /*
          * This test can't use commonAssertions because it doesn't use the common categories
          */
-		Map output = map(result);
+		Map output = result;
 		Assert.assertNotNull( output );
-		Assert.assertEquals( states.length - 1, output.size() );
+		Assert.assertEquals( states.length, output.size() );
 		List node = (List)output.get( "NY" );
 		Assert.assertEquals( 1000 + cities.length /* for rollups*/, node.size() );
 		Assert.assertSame( TestStruct.class, node.get( 0 ).getClass() );
@@ -315,62 +287,41 @@ public class NesterTest
    
 
 
-	void commonAssertions(List result, Class detailClass, File jsonDump)
+	void commonAssertions(Map result, Class detailClass, File jsonDump)
 	throws Exception
 	{
-		Assert.assertNotNull("Global Rollup present", result.get(0));
-		Assert.assertEquals("Rollup class", detailClass, result.get(0).getClass());
-		
-		Map output = map(result);
+
+		Map output = result;
 		Assert.assertNotNull( output );
-		Assert.assertEquals( states.length - 1, output.size() );
-		List node = (List)output.get( "NY" );
-		assertRollupEquals("NY State Rollup", node.get(0), detailClass, "NY|STATE_ROLLUP");
+		Assert.assertEquals( states.length, output.size() );
+		Map node = (Map)output.get( "NY" );
+		Assert.assertNotNull(node);
+		Map ny = node;
+		Assert.assertEquals( cities.length, ny.size() );
 		
-		Map ny = (Map) node.get(1);
-		Assert.assertEquals( cities.length - 1, ny.size() );
-		node = (List)output.get( "NJ" );
-		assertRollupEquals("NJ State Rollup", node.get(0), detailClass, "NJ|STATE_ROLLUP");
-		
-		Map nj = (Map) node.get(1);
-		Assert.assertEquals( cities.length - 1, nj.size() );
+		node = (Map)output.get( "NJ" );
+		Map nj = node;
+		Assert.assertEquals( cities.length, nj.size() );
 
 		Stream.of( "CITY01", "CITY02", "CITY03" ).forEach( s -> {
 			String cityLabel = "NY|" + s;
-			List innerNode = (List)ny.get( cityLabel );
-			Assert.assertEquals( s, zips.length - 1, map(innerNode).size() );
-			assertRollupEquals("NY City Rollup", innerNode.get(0), detailClass, cityLabel + "|CITY_ROLLUP");
+			Map innerNode = (Map)ny.get( cityLabel );
+			Assert.assertEquals( s, zips.length, innerNode.size() );
 		} );
 
 		Stream.of( "CITY01", "CITY02", "CITY03" ).forEach( s -> {
 			String cityLabel = "NJ|" + s;
-			List innerNode = (List)nj.get( cityLabel );
-			Assert.assertEquals( s, zips.length - 1, map(innerNode).size() );
-			assertRollupEquals("NJ City Rollup", innerNode.get(0), detailClass, cityLabel + "|CITY_ROLLUP");
+			Map innerNode = (Map)nj.get( cityLabel );
+			Assert.assertEquals( s, zips.length, innerNode.size() );
 		} );
 
-		Map city01 = map((List) ny.get( "NY|CITY01" ));
-		List zip00001 = list((List)city01.get( "00001" ));
+		Map city01 = (Map)ny.get( "NY|CITY01" );
+		List zip00001 = (List)city01.get( "00001" );
 		Assert.assertEquals( secs.length, zip00001.size() );
 		Assert.assertEquals( detailClass, zip00001.get( 0 ).getClass() );
 		Assert.assertEquals( detailClass, zip00001.get( 1 ).getClass() );
 
-		ObjectMapper ser = new ObjectMapper();
-		String json = ser.writeValueAsString( output );
-		Assert.assertNotNull( json );
-		
-		if (jsonDump != null)
-		{
-			try(BufferedWriter wrt = new BufferedWriter( new FileWriter(jsonDump)))
-			{
-				wrt.append( json );
-				wrt.flush();
-			}
-			catch(Exception e)
-			{
-				log.error( "failed to write JSON", e );
-			}
-		}
+		dumpToJsonFile( output, jsonDump );
 	}
 	
 	
@@ -389,6 +340,27 @@ public class NesterTest
 		}
 	}
 
+	class CustomNullSerializer
+	extends StdSerializer<Object>
+	{
+		public CustomNullSerializer()
+		{
+			super(Object.class);
+		}
+		
+	    @Override
+	    public void serialize(Object value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+	    	gen.writeString( "" ) ;
+	    }
+
+	    @Override
+	    public void serializeWithType(Object value, JsonGenerator gen, SerializerProvider serializers,
+	            TypeSerializer typeSer)
+	        throws IOException
+	    {
+	    	gen.writeString( "" ) ;
+	    }
+	}
 
 	class TestStructAccessor
 	implements Accessor<TestStruct>
@@ -465,15 +437,33 @@ public class NesterTest
             return row;
         }
     
-    }   	
-	List list(List node)
-	{
-		return node;
-	}
+    }
 	
-	Map map(List node)
+	private void dumpToJsonFile(Object object, File jsonDump) throws Exception
 	{
-		return (node.size() > 1) ? (Map)node.get(node.size() - 1) : null;
+		if (jsonDump == null)
+		{
+			return;
+		}
+		ObjectMapper ser = new ObjectMapper();
+		SimpleModule s = new SimpleModule();
+		s.addSerializer( Object.class, new CustomNullSerializer() );
+		ser.registerModule( s );
+		String json = ser.writeValueAsString( object );
+
+		File tmpDir = new File(System.getProperty( "java.io.tmpdir" ));
+		log.info( "Java_tmp_dir={}", tmpDir);
+		try (BufferedWriter wrt = new BufferedWriter( new FileWriter(jsonDump))) 
+		{
+			wrt.append( json );
+			wrt.flush();
+		}
+		catch(Exception e)
+		{
+			log.error( "failed to write JSON", e );
+		}
+
 	}
+
 
 }
