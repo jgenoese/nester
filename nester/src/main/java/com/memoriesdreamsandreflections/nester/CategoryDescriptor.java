@@ -19,11 +19,32 @@ public class CategoryDescriptor<T>
 	Field[] ancillaryFields;
 	boolean hasAncillaryFields;
 	
+	/*
+	 * Query fields
+	 *
+	collectionLabel
+	categoryFieldName
+	categoryFieldRenderedName
+	 */
 	
+	
+	protected CategoryDescriptor()
+	{
+		
+	}
 	
 	protected CategoryDescriptor(Class<T> clazz)
 	{
 		this.clazz = clazz;
+	}
+	
+	@SuppressWarnings( { "rawtypes", "unchecked" } )
+	public static CategoryDescriptor newQueryInstance(Map<String, String> spec)
+	{
+		CategoryDescriptor desc = new CategoryDescriptor();
+		desc.collectionLabel = spec.get( "collectionLabel" );
+		desc.categoryFieldName = spec.get( "renderedCategoryFieldName" );
+		return desc;
 	}
 	
 	public static <T> CategoryDescriptor<T> newInstance(Class<T> clazz)
@@ -199,5 +220,13 @@ public class CategoryDescriptor<T>
 	public String renderedCategoryFieldName()
 	{
 		return categoryFieldRenderedName == null ? categoryFieldName : categoryFieldRenderedName;
+	}
+	
+	public Map<String, String> specMap()
+	{
+		Map<String,String> spec = new LinkedHashMap<>(2);
+		spec.put( "collectionLabel", collectionLabel );
+		spec.put( "renderedCategoryFieldName", renderedCategoryFieldName() );
+		return spec;
 	}
 }

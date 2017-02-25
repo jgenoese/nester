@@ -20,9 +20,7 @@ import java.lang.reflect.Field;
 import java.util.Objects;
 
 /**
- * Simple greeter class.
- *
- * @author saden
+ * Raw processing utility class
  */
 @SuppressWarnings( { "rawtypes" } )
 
