@@ -17,6 +17,21 @@
 	<packaging>jar</packaging>
 
 
+	<distributionManagement>
+		<repository>
+			<id>mdr.crypto.repository</id>
+			<name>MDR Production Repository</name>
+			<uniqueVersion>false</uniqueVersion>
+			<url>https://www.memoriesdreamsandreflections.com/nexus/repository/releases</url>
+		</repository>
+		<snapshotRepository>
+			<id>mdr.crypto.snapshot.repository</id>
+			<name>MDR Snapshot Repository</name>
+			<uniqueVersion>true</uniqueVersion>
+			<url>https://www.memoriesdreamsandreflections.com/nexus/repository/snapshots</url>
+		</snapshotRepository>
+	</distributionManagement>
+
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>1.8</maven.compiler.source>

@@ -54,6 +54,7 @@ public class Nester<R>
 	long[] levelClocks;
 	boolean collectDetails = true;
 	Map nameValueRoot;
+	boolean queryOnly;
 
 	public static <R> Nester<R> newInstance( Class<R> rowClass )
 	{
@@ -61,9 +62,77 @@ public class Nester<R>
 		nester.rowClazz = rowClass;
 		return nester;
 	}
-
-	public Nester()
+	
+	@SuppressWarnings( "unchecked" )
+	public static Nester getRehydratedInstance(Map dehydrated)
 	{
+		if (!dehydrated.containsKey( "specs" ) || !dehydrated.containsKey( "root" ))
+		{
+			throw new IllegalArgumentException("invalid dehydrated instance");
+		}
+
+		Nester result = new Nester(dehydrated);
+		return result;
+	}
+
+	protected Nester()
+	{
+	}
+
+	@SuppressWarnings( "unchecked" )
+	protected Nester(Map dehydrated)
+	{
+		try
+		{
+			nameValueRoot = (Map)dehydrated.get( "root" );
+		}
+		catch(Exception e)
+		{
+			throw new IllegalArgumentException("invalid dehydrated instance", e);
+		}
+		
+		try
+		{
+			List<Map<String,String>>specList = (List<Map<String,String>>)dehydrated.get( "specs" );
+			if (specList == null || specList.size() == 0)
+			{
+				new IllegalArgumentException("invalid dehydrated instance: specs");
+			}
+			categoryDescriptors = new ArrayList<>(specList.size());
+			inmostLevel = categoryDescriptors.size() - 1;
+
+			for (Map<String, String> spec : specList)
+			{
+				categoryDescriptors.add( CategoryDescriptor.newQueryInstance(spec));
+			}
+			inmostLevel = categoryDescriptors.size() - 1;
+		}
+		catch(IllegalArgumentException e)
+		{
+			throw e;
+		}
+		catch(Exception e)
+		{
+			throw new IllegalArgumentException("invalid dehydrated instance", e);
+		}
+		queryOnly = true;
+	}
+	
+	public Map<?,?> getDehydratedInstance()
+	{
+		if (nameValueRoot == null)
+		{
+			throw new UnsupportedOperationException("no result yet");
+		}
+		Map<String,Object> result = new LinkedHashMap<>(2);
+		List<Map<String,String>>specList = new ArrayList<>(categoryDescriptors.size());
+		result.put( "specs", specList );
+		result.put( "root", nameValueRoot );
+		for (CategoryDescriptor< ? > desc : categoryDescriptors)
+		{
+			specList.add( desc.specMap() );
+		}
+		return result;
 	}
 
 	public Nester<R> categoryDescriptors( List<CategoryDescriptor<R>> categoryDescriptors )

@@ -170,7 +170,107 @@ public class NesterNameValueTest
 		dumpToJsonFile(queryResult, "mungeTestQuerySecurity.json");
 		
 	}
+
 	
+	@Test
+	public void mungeRehydratedTest()
+	throws Exception
+	{
+		List<CategoryDescriptor<TestNameValueStruct>> categoryDescriptors = new ArrayList<>(4);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "state" )
+				.withAncillaryFieldNames( new String[]{"ancState"} )
+				.withAncillaryValueMappingFunction( (row) -> {
+					Map<String, Object> ancMap = new LinkedHashMap<>();
+					ancMap.put( "stateUrl", "http://ohcrap.com?state="  + row.getState());
+					return ancMap;
+				} )
+				.withCollectionLabel("states")
+			);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "city" )
+				.withAncillaryFieldNames( new String[]{"ancState", "ancCity"} )
+				.withAncillaryValueMappingFunction( (row) -> {
+					Map<String, Object> ancMap = new LinkedHashMap<>();
+					ancMap.put( "cityUrl", "http://ohcrap.com?state="  + row.getState() +
+											"&city=" + row.getCity());
+					return ancMap;
+				} )
+				.withCollectionLabel("cities")
+			);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "zip" )
+				.withAncillaryValueMappingFunction( (row) -> {
+						Map<String, Object> ancMap = new LinkedHashMap<>();
+						ancMap.put( "zipAnc1", row.getZip() + " anc1" );
+						ancMap.put( "zipAnc2", row.getZip() + " anc2" );
+						ancMap.put( "zipUrl", "http://ohcrap.com?state="  + row.getState() +
+												"&city=" + row.getCity() + 
+												"&zip=" + row.getZip() );
+						return ancMap;
+					} )
+				.withCollectionLabel("zips")
+			);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "security" )
+				.withCollectionLabel("securities")
+				.withAncillaryValueMappingFunction( (row) -> {
+					Map<String, Object> ancMap = new LinkedHashMap<>();
+					ancMap.put( "secAnc1", row.getSecurity() + " anc1" );
+					ancMap.put( "secAnc2", row.getSecurity() + " anc2" );
+					return ancMap;
+				} )
+				.withDetailCollectionLabel( "synthesizedDetails" )
+				.withDetailValueMappingFunction( (row) -> {
+					Map<String, Object> result = new LinkedHashMap<>();
+					result.put( "detailState", row.getState() );
+					result.put( "detailCity", row.getCity() );
+					result.put( "detailZip", row.getZip() );
+					result.put( "detailSec", row.getSecurity() );
+					return result;
+				}
+				)
+			);
+
+		Nester<TestNameValueStruct> nester = Nester.newInstance( TestNameValueStruct.class )
+			.categoryDescriptors( categoryDescriptors );
+		Map result = nester.nameValueNest( testListNoNulls );
+		
+		Map dehydratedInstance = nester.getDehydratedInstance();
+		nester = Nester.getRehydratedInstance( dehydratedInstance );
+		
+		dumpToJsonFile(result, "mungeTestResult.json");
+		
+		Object queryResult = nester.query();
+		Assert.assertTrue(queryResult instanceof Map && ((Map)queryResult).containsKey( "states" ));
+		dumpToJsonFile(queryResult, "mungeTestQueryEntireTree.json");
+		
+		queryResult = nester.query("NY");
+		Assert.assertTrue(queryResult instanceof Map); 
+		Assert.assertTrue(((Map)queryResult).containsKey( "cities" ));
+		Assert.assertTrue(((Map)queryResult).get( "state" ).equals("NY"));
+		dumpToJsonFile(queryResult, "mungeTestQueryState.json");
+		
+		queryResult = nester.query("NY", "CITY01");
+		Assert.assertTrue(queryResult instanceof Map); 
+		Assert.assertTrue(((Map)queryResult).containsKey( "zips" ));
+		Assert.assertTrue(((Map)queryResult).get( "city" ).equals("CITY01"));
+		dumpToJsonFile(queryResult, "mungeTestQueryCity.json");
+		
+		queryResult = nester.query("NY", "CITY01", "00001");
+		Assert.assertTrue(queryResult instanceof Map); 
+		Assert.assertTrue(((Map)queryResult).containsKey( "securities" ));
+		Assert.assertTrue(((Map)queryResult).get( "zip" ).equals("00001"));
+		dumpToJsonFile(queryResult, "mungeTestQueryZip.json");
+		
+		queryResult = nester.query("NY", "CITY01", "00001", "SEC-001");
+		Assert.assertTrue(queryResult instanceof Map);
+		Assert.assertTrue(((Map)queryResult).containsKey( "synthesizedDetails" ));
+		Assert.assertTrue(((Map)queryResult).get( "security" ).equals("SEC-001"));
+		dumpToJsonFile(queryResult, "mungeTestQuerySecurity.json");
+		
+	}
+
 	
 	@Test
 	public void mungeTestWithSubstitutedNames()
@@ -275,6 +375,114 @@ public class NesterNameValueTest
 		dumpToJsonFile(queryResult, "mungeTestWithSubstitutedNamesQuerySecurity.json");
 		
 	}
+	
+	@SuppressWarnings( "unchecked" )
+	@Test
+	public void mungeRehydratedTestWithSubstitutedNames()
+	throws Exception
+	{
+		List<CategoryDescriptor<TestNameValueStruct>> categoryDescriptors = new ArrayList<>(4);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "state" )
+				.withCategoryFieldRenderedName( "rendered_state")
+				.withAncillaryFieldNames( new String[]{"ancState"} )
+				.withAncillaryValueMappingFunction( (row) -> {
+					Map<String, Object> ancMap = new LinkedHashMap<>();
+					ancMap.put( "stateUrl", "http://ohcrap.com?state="  + row.getState());
+					return ancMap;
+				} )
+				.withCollectionLabel("states")
+			);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "city" )
+				.withCategoryFieldRenderedName( "rendered_city" )
+				.withAncillaryFieldNames( new String[]{"ancState", "ancCity"} )
+				.withAncillaryValueMappingFunction( (row) -> {
+					Map<String, Object> ancMap = new LinkedHashMap<>();
+					ancMap.put( "cityUrl", "http://ohcrap.com?state="  + row.getState() +
+											"&city=" + row.getCity());
+					return ancMap;
+				} )
+				.withCollectionLabel("cities")
+			);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "zip" )
+				.withCategoryFieldRenderedName( "rendered_zip" )
+				.withAncillaryValueMappingFunction( (row) -> {
+						Map<String, Object> ancMap = new LinkedHashMap<>();
+						ancMap.put( "zipAnc1", row.getZip() + " anc1" );
+						ancMap.put( "zipAnc2", row.getZip() + " anc2" );
+						ancMap.put( "zipUrl", "http://ohcrap.com?state="  + row.getState() +
+												"&city=" + row.getCity() + 
+												"&zip=" + row.getZip() );
+						return ancMap;
+					} )
+				.withCollectionLabel("zips")
+			);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "security" )
+				.withCategoryFieldRenderedName( "rendered_security" )
+				.withCollectionLabel("securities")
+				.withAncillaryValueMappingFunction( (row) -> {
+					Map<String, Object> ancMap = new LinkedHashMap<>();
+					ancMap.put( "secAnc1", row.getSecurity() + " anc1" );
+					ancMap.put( "secAnc2", row.getSecurity() + " anc2" );
+					return ancMap;
+				} )
+				.withDetailCollectionLabel( "synthesizedDetails" )
+				.withDetailValueMappingFunction( (row) -> {
+					Map<String, Object> result = new LinkedHashMap<>();
+					result.put( "detailState", row.getState() );
+					result.put( "detailCity", row.getCity() );
+					result.put( "detailZip", row.getZip() );
+					result.put( "detailSec", row.getSecurity() );
+					return result;
+				}
+				)
+			);
+
+		String renderedState = categoryDescriptors.get( 0 ).renderedCategoryFieldName();
+		String renderedCity = categoryDescriptors.get( 1 ).renderedCategoryFieldName();
+		String renderedZip = categoryDescriptors.get( 2 ).renderedCategoryFieldName();
+		String renderedSecurity = categoryDescriptors.get( 3 ).renderedCategoryFieldName();
+		
+		Nester<TestNameValueStruct> nester = Nester.newInstance( TestNameValueStruct.class )
+			.categoryDescriptors( categoryDescriptors );
+		Map result = nester.nameValueNest( testListNoNulls );
+		dumpToJsonFile(result, "mungeTestWithSubstitutedNamesResult.json");
+		
+		Map dehydrated = nester.getDehydratedInstance();
+		nester = Nester.getRehydratedInstance( dehydrated );
+		
+		Object queryResult = nester.query();
+		Assert.assertTrue(queryResult instanceof Map && ((Map)queryResult).containsKey( "states" ));
+		dumpToJsonFile(queryResult, "mungeTestWithSubstitutedNamesQueryEntireTree.json");
+		
+		queryResult = nester.query("NY");
+		Assert.assertTrue(queryResult instanceof Map); 
+		Assert.assertTrue(((Map)queryResult).containsKey( "cities" ));
+		Assert.assertTrue(((Map)queryResult).get( renderedState ).equals("NY"));
+		dumpToJsonFile(queryResult, "mungeTestWithSubstitutedNamesQueryState.json");
+		
+		queryResult = nester.query("NY", "CITY01");
+		Assert.assertTrue(queryResult instanceof Map); 
+		Assert.assertTrue(((Map)queryResult).containsKey( "zips" ));
+		Assert.assertTrue(((Map)queryResult).get( renderedCity ).equals("CITY01"));
+		dumpToJsonFile(queryResult, "mungeTestWithSubstitutedNamesQueryCity.json");
+		
+		queryResult = nester.query("NY", "CITY01", "00001");
+		Assert.assertTrue(queryResult instanceof Map); 
+		Assert.assertTrue(((Map)queryResult).containsKey( "securities" ));
+		Assert.assertTrue(((Map)queryResult).get( renderedZip ).equals("00001"));
+		dumpToJsonFile(queryResult, "mungeTestWithSubstitutedNamesQueryZip.json");
+		
+		queryResult = nester.query("NY", "CITY01", "00001", "SEC-001");
+		Assert.assertTrue(queryResult instanceof Map);
+		Assert.assertTrue(((Map)queryResult).containsKey( "synthesizedDetails" ));
+		Assert.assertTrue(((Map)queryResult).get( renderedSecurity ).equals("SEC-001"));
+		dumpToJsonFile(queryResult, "mungeTestWithSubstitutedNamesQuerySecurity.json");
+		
+	}
 
 	@Test
 	public void mungeTestNoDetails()
@@ -324,6 +532,70 @@ public class NesterNameValueTest
 			.categoryDescriptors( categoryDescriptors );
 		Map result = nester.nameValueNest( testListNoNulls );
 		dumpToJsonFile(result, "mungeTestResult.json");
+		
+		Object queryResult = nester.query();
+		dumpToJsonFile(queryResult, "mungeTestNoDetailsQueryEntireTree.json");
+		
+		queryResult = nester.query("NY", "CITY01", "00001", "SEC-001");
+		Assert.assertTrue(queryResult instanceof String);
+		Assert.assertTrue(((String)queryResult).equals("SEC-001"));
+		dumpToJsonFile(queryResult, "mungeTestNoDetailsQuerySecurity.json");
+		
+	}
+
+	@SuppressWarnings( "unchecked" )
+	@Test
+	public void mungeRehydratedTestNoDetails()
+	throws Exception
+	{
+		List<CategoryDescriptor<TestNameValueStruct>> categoryDescriptors = new ArrayList<>(4);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "state" )
+				.withAncillaryFieldNames( new String[]{"ancState"} )
+				.withAncillaryValueMappingFunction( (row) -> {
+					Map<String, Object> ancMap = new LinkedHashMap<>();
+					ancMap.put( "stateUrl", "http://ohcrap.com?state="  + row.getState());
+					return ancMap;
+				} )
+				.withCollectionLabel("states")
+			);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "city" )
+				.withAncillaryFieldNames( new String[]{"ancState", "ancCity"} )
+				.withAncillaryValueMappingFunction( (row) -> {
+					Map<String, Object> ancMap = new LinkedHashMap<>();
+					ancMap.put( "cityUrl", "http://ohcrap.com?state="  + row.getState() +
+											"&city=" + row.getCity());
+					return ancMap;
+				} )
+				.withCollectionLabel("cities")
+			);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "zip" )
+				.withAncillaryValueMappingFunction( (row) -> {
+						Map<String, Object> ancMap = new LinkedHashMap<>();
+						ancMap.put( "zipAnc1", row.getZip() + " anc1" );
+						ancMap.put( "zipAnc2", row.getZip() + " anc2" );
+						ancMap.put( "zipUrl", "http://ohcrap.com?state="  + row.getState() +
+												"&city=" + row.getCity() + 
+												"&zip=" + row.getZip() );
+						return ancMap;
+					} )
+				.withCollectionLabel("zips")
+			);
+			categoryDescriptors.add( CategoryDescriptor.newInstance( TestNameValueStruct.class )
+				.withCategoryFieldName( "security" )
+				.withCollectionLabel("securities")
+			);
+
+		Nester<TestNameValueStruct> nester = Nester.newInstance( TestNameValueStruct.class )
+			.categoryDescriptors( categoryDescriptors );
+		Map result = nester.nameValueNest( testListNoNulls );
+		dumpToJsonFile(result, "mungeTestResult.json");
+		
+		
+		Map dehydrated = nester.getDehydratedInstance();
+		nester = Nester.getRehydratedInstance( dehydrated );
 		
 		Object queryResult = nester.query();
 		dumpToJsonFile(queryResult, "mungeTestNoDetailsQueryEntireTree.json");
