@@ -150,7 +150,7 @@ public class CategoryDescriptorTest
 		one.setCategoryField( "fieldValue" );
 		one.setAncillaryField1( "ancillaryField1Value" );
 		one.setAncillaryField2( "ancillaryField2Value" );
-		Map<String, Object> result = subject.mapAllFields( one );
+		Map<String, Object> result = subject.mapCatAndAncFields( one );
 		assertEquals(3, result.size());
 		assertEquals("fieldValue", result.get( "categoryField" ));
 		assertEquals("ancillaryField1Value", result.get( "ancillaryField1" ));
@@ -173,7 +173,7 @@ public class CategoryDescriptorTest
 		one.setCategoryField( "fieldValue" );
 		one.setAncillaryField1( "ancillaryField1Value" );
 		one.setAncillaryField2( "ancillaryField2Value" );
-		Map<String, Object> result = subject.mapAllFields( one );
+		Map<String, Object> result = subject.mapCatAndAncFields( one );
 		assertEquals(3, result.size());
 		assertNull(result.get( "categoryField" ));
 		assertEquals("fieldValue", result.get( "renderedCategoryField" ));

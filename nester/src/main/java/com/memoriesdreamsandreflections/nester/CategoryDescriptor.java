@@ -177,7 +177,7 @@ public class CategoryDescriptor<T>
 	 * @throws IllegalArgumentException
 	 * @throws IllegalAccessException
 	 */
-	public Map<String, Object> mapAllFields(T t) throws IllegalArgumentException, IllegalAccessException
+	public Map<String, Object> mapCatAndAncFields(T t) throws IllegalArgumentException, IllegalAccessException
 	{
 		
 		Map<String, Object> result = new LinkedHashMap<>();

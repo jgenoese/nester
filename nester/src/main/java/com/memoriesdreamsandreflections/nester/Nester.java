@@ -361,7 +361,7 @@ public class Nester<R>
 					{
 						Map newMapForCategoryValue = new LinkedHashMap();
 						List newListForNextLowerCategory = new ArrayList();
-						newMapForCategoryValue.putAll(desc.mapAllFields( row )); // will include category Value, of course
+						newMapForCategoryValue.putAll(desc.mapCatAndAncFields( row )); // will include category Value, of course
 						newMapForCategoryValue.put( categoryDescriptors.get(i+1).getCollectionLabel(), newListForNextLowerCategory );
 						listForCurrentCatDesc.add( newMapForCategoryValue );
 						
@@ -372,10 +372,13 @@ public class Nester<R>
 						if ( desc.categoryRequiresListOfMaps() )
 						{
 							Map newMapForCategoryValue = new LinkedHashMap();
-							List newListForDetailMaps = new ArrayList();
-							newMapForCategoryValue.putAll(desc.mapAllFields( row )); // will include category Value, of course
-							newMapForCategoryValue.put( desc.getDetailCollectionLabel(), newListForDetailMaps );
-							newListForDetailMaps.add( desc.mapDetail( row ) );
+							newMapForCategoryValue.putAll(desc.mapCatAndAncFields( row )); // will include category Value, of course
+							if (desc.getDetailCollectionLabel() != null)
+							{
+								List newListForDetailMaps = new ArrayList();
+								newMapForCategoryValue.put( desc.getDetailCollectionLabel(), newListForDetailMaps );
+								newListForDetailMaps.add( desc.mapDetail( row ) );
+							}
 							listForCurrentCatDesc.add( newMapForCategoryValue );
 						}
 						else
