@@ -17,7 +17,7 @@ extends Specification
 		int b = 1
 		
 		expect:
-		 a == b
+		 a != b
 		
 	}
 
@@ -28,7 +28,7 @@ extends Specification
 		int b = 1
 		
 		expect:
-		 a == b
+		 a != b
 	}
 
 }
